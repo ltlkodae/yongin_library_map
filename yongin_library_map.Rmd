@@ -1,0 +1,58 @@
+---
+title: "yongin_library_map"
+author: "ltlkodae"
+date: "2016-09-17"
+output: html_document
+---
+
+*본 문서는 [공공데이터포털](https://www.data.go.kr) 의 [경기도_용인시_도서관_정보](https://www.data.go.kr/subMain.jsp?param=REFUQUAxNTAxNjM2Mw==#/L2NvbW0vY29tbW9uU2VhcmNoL29yZ2luRGF0YVNldCRAXjAxMm0xJEBecHVibGljRGF0YVBrPTE1MDE2MzYzJEBeYnJtQ2Q9T0MwMDAxJEBeZXhjZWxDb3VudD0wJEBeZG93bmxvYWRDb3VudD0zJEBeb3JnSW5kZXg9REFUQSRAXm1heFJvd3M9MTAwMCRAXnNraXBSb3dzPTA=) 를 활용하였습니다*
+
+
+용인시 도서관을 지도에 표시해 보자
+
+
+```{r message=FALSE, warning=FALSE}
+library('ggplot2')
+library('ggmap')
+library('stringr')
+```
+
+
+데이터의 구조를 확인한다
+```{r}
+libTbl<-read.table("library_info_01.csv", sep=',', head=TRUE)
+str(libTbl)
+```
+
+
+'도서자료수', '비도서자료수' 데이터에 ',' 가 포함되어 있어서 factor 로 처리된다. 이를 numeric 으로 변경한다
+1. ',' 삭제
+2. numeric으로 변경
+```{r}
+libTbl$도서자료수<-as.numeric(str_replace_all(levels(libTbl$도서자료수), ',', ""))
+libTbl$비도서자료수<-as.numeric(str_replace_all(levels(libTbl$비도서자료수), ',', ""))
+str(libTbl)
+```
+
+
+도서관들의 중간 위치(지도의 중심)를 찾는다. 평균값이나 중간값이 아닌, (min+max)/2 이다.
+```{r}
+mapCenter<-c((max(libTbl$WGS84경도)+min(libTbl$WGS84경도))/2, (max(libTbl$WGS84위도)+min(libTbl$WGS84위도))/2)
+mapCenter
+```
+
+
+각 도서관을 지도에 원으로 표시하고, 원의 크기를 자료수에 비례하도록 한다.
+```{r}
+yonginMap<-get_map(mapCenter, zoom = 12, maptype = 'roadmap')
+
+ggmap(yonginMap) + 
+  geom_point(data=libTbl, aes(x=WGS84경도, y=WGS84위도), color= "red",
+             size=(libTbl$도서자료수+libTbl$연속간행물자료수+libTbl$비도서자료수)/50000) +
+  geom_text(data=libTbl, aes(x=WGS84경도, y=WGS84위도+0.005, label=도서관명), color= "black", size=2)
+```
+
+그림파일을 저장한다.
+```{r}
+ggsave("yonginLibMap.png", dpi=1024)
+```
